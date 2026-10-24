@@ -55,6 +55,8 @@ Voice-call credentials accept SecretRefs. `plugins.entries.voice-call.config.twi
             // Telnyx webhook public key from the Mission Control Portal
             // (Base64; can also be set via TELNYX_PUBLIC_KEY).
             publicKey: "...",
+            // Optional: denoise caller audio on inbound realtime calls (off when unset).
+            // noiseSuppression: { direction: "outbound" },
           },
           plivo: {
             authId: "MAxxxxxxxxxxxxxxxxxxxx",
@@ -134,6 +136,10 @@ Twilio defaults to its US1 REST endpoint. To process calls in a supported
 non-US Region, set `twilio.region` to `ie1` or `au1` and use credentials from
 that Region. See
 [Twilio's non-US REST API guide](https://www.twilio.com/docs/global-infrastructure/using-the-twilio-rest-api-in-a-non-us-region).
+
+Telnyx noise suppression is off by default. Set `telnyx.noiseSuppression` to
+denoise audio on inbound realtime calls before it reaches the realtime model;
+see [Telnyx noise suppression](/plugins/voice-call/realtime-and-streaming#telnyx-noise-suppression).
 
 ### Twilio voicemail detection tuning
 
