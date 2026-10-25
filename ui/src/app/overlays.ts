@@ -14,16 +14,14 @@ import {
   isStaleApprovalResolutionError,
   parseApprovalRequestedEvent,
   parseApprovalResolvedEvent,
+  refreshPendingApprovalQueue,
   resolveApprovalRequest,
   type ExecApprovalPromptState,
 } from "./exec-approval.ts";
 import { gatewayPresentationScope } from "./gateway-presentation-scope.ts";
 import type { ApplicationGateway } from "./gateway.ts";
 import { readGatewayOperatorAccess } from "./operator-access.ts";
-import {
-  createOverlayApprovalRefresher,
-  readOverlayOperatorAccessTransition,
-} from "./overlays-access.ts";
+import { readOverlayOperatorAccessTransition } from "./overlays-access.ts";
 import type { ApplicationOverlays, ApplicationOverlaySnapshot } from "./overlays-types.ts";
 import {
   createApplicationUpdateOverlays,
@@ -104,16 +102,52 @@ export function createApplicationOverlays(
     gateway.snapshot.client === client &&
     gateway.snapshot.phase === "connected";
 
-  const refreshApprovals = createOverlayApprovalRefresher({
-    gateway,
-    state: promptState,
-    getConnectedEpoch: () => connectedEpoch,
-    getReviewGeneration: () => approvalAccessGeneration,
-    canReview: () => operatorAccess.canReviewApprovals,
-    isCurrentClient,
-    isDisposed: () => disposed,
-    publish,
-  });
+  let approvalRefreshGeneration = 0;
+  let approvalRetryTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
+  const cancelApprovalRefresh = () => {
+    approvalRefreshGeneration += 1;
+    if (approvalRetryTimer !== null) {
+      globalThis.clearTimeout(approvalRetryTimer);
+      approvalRetryTimer = null;
+    }
+  };
+  const refreshApprovals = async (
+    client: NonNullable<typeof activeClient>,
+    epoch = connectedEpoch,
+    reviewGeneration = approvalAccessGeneration,
+  ) => {
+    cancelApprovalRefresh();
+    const refreshGeneration = approvalRefreshGeneration;
+    let retryDelayMs = 1_000;
+    const isCurrent = () =>
+      refreshGeneration === approvalRefreshGeneration &&
+      !disposed &&
+      epoch === connectedEpoch &&
+      reviewGeneration === approvalAccessGeneration &&
+      operatorAccess.canReviewApprovals &&
+      readGatewayOperatorAccess(gateway.snapshot).canReviewApprovals &&
+      isCurrentClient(client);
+    const run = async () => {
+      if (!isCurrent()) {
+        return;
+      }
+      const complete = await refreshPendingApprovalQueue(promptState, {
+        isCurrentClient: (requestClient) => requestClient === client && isCurrent(),
+      });
+      if (!isCurrent()) {
+        return;
+      }
+      publish();
+      if (!complete) {
+        approvalRetryTimer = globalThis.setTimeout(() => {
+          approvalRetryTimer = null;
+          void run();
+        }, retryDelayMs);
+        retryDelayMs = Math.min(retryDelayMs * 2, 4_000);
+      }
+    };
+    await run();
+  };
 
   const synchronizeGateway = (next: ApplicationGateway["snapshot"]) => {
     const previousClient = activeClient;
@@ -125,7 +159,7 @@ export function createApplicationOverlays(
     const connectedSourceChanged = connectedSource !== nextConnectedSource || identityChanged;
     const accessTransition = readOverlayOperatorAccessTransition(operatorAccess, next);
     if (connectedSourceChanged || accessTransition.reviewChanged) {
-      refreshApprovals.cancel();
+      cancelApprovalRefresh();
     }
     operatorAccess = accessTransition.access;
     if (accessTransition.reviewChanged) {
@@ -205,7 +239,7 @@ export function createApplicationOverlays(
       operatorAccess.canReviewApprovals
     ) {
       void runConnectionBootstrap("approvals", () =>
-        refreshApprovals.refresh(connectedClient, connectedEpoch, approvalAccessGeneration),
+        refreshApprovals(connectedClient, connectedEpoch, approvalAccessGeneration),
       ).catch(() => undefined);
     }
   };
@@ -329,7 +363,7 @@ export function createApplicationOverlays(
           const currentClient = activeClient;
           const epoch = connectedEpoch;
           if (currentClient && isCurrentOperation()) {
-            await refreshApprovals.refresh(currentClient, epoch);
+            await refreshApprovals(currentClient, epoch);
           }
           return;
         }
@@ -410,7 +444,7 @@ export function createApplicationOverlays(
     dispose() {
       disposed = true;
       approvalDecision = null;
-      refreshApprovals.cancel();
+      cancelApprovalRefresh();
       updates.dispose();
       pairing?.close(false);
       stopGateway();

@@ -2,12 +2,7 @@ import type { AgentMessage } from "../../runtime/index.js";
 
 const MAX_BTW_SNAPSHOT_MESSAGES = 100;
 
-export function summarizeSessionContext(messages: AgentMessage[]): {
-  roleCounts: string;
-  totalTextChars: number;
-  totalImageBlocks: number;
-  maxMessageTextChars: number;
-} {
+export function summarizeSessionContext(messages: AgentMessage[]) {
   const roleCounts = new Map<string, number>();
   let totalTextChars = 0;
   let totalImageBlocks = 0;
