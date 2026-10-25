@@ -1,4 +1,5 @@
 // Stream custom syntax with --answer-chunk $'```json\n{"ok":true}\n```\nprose\n'.
+// Add --final-answer-phase to exercise the visible projection during each delta.
 // Add --list-filter-churn to --scenario memory-soak --mixed-rpc to rotate sidebar/search filters.
 // --gateway-preload <file> imports benchmark instrumentation after tsx for source or dist entries;
 // result.json records its resolved path and SHA-256. Use the same instrumentation on both arms.
@@ -157,6 +158,7 @@ const { values } = parseArgs({
     "reset-every-rounds": { type: "string", default: "20" },
     chunks: { type: "string", default: "100" },
     "answer-chunk": { type: "string", default: "Synthetic streamed answer. " },
+    "final-answer-phase": { type: "boolean", default: false },
     "chunk-interval-ms": { type: "string", default: "10" },
     "prompt-kib": { type: "string", default: "128" },
     "chat-attachment-kib": { type: "string", default: "0" },
@@ -1550,6 +1552,7 @@ function responseEvents(chunks: string[]) {
     id: "msg_broadcast",
     role: "assistant",
     status: "completed",
+    ...(values["final-answer-phase"] ? { phase: "final_answer" } : {}),
     content: [{ type: "output_text", text, annotations: [] }],
   };
   return [
@@ -6512,6 +6515,7 @@ try {
     ...(scenario === "sessions.cleanup" ? { sessionMaintenanceMode: "warn" } : {}),
     chunks: chunkCount,
     answerChunk: chunk,
+    finalAnswerPhase: values["final-answer-phase"],
     chunkIntervalMs,
     peakStreams,
     streamRequests,
