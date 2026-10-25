@@ -148,11 +148,7 @@ export function toToolSearchConfig(config: CodeModeConfig): ToolSearchConfig {
   };
 }
 
-export function readCode(args: unknown): {
-  code: string;
-  restartSafe: boolean;
-  awaitResults: boolean;
-} {
+export function readCode(args: unknown) {
   const params = asToolParamsRecord(args);
   // Full-schema tool calls can materialize an unused alias as blank.
   // Only nonblank aliases participate in divergence checks.

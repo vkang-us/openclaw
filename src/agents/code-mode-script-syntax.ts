@@ -7,10 +7,7 @@ type CodeModeScriptParseResult =
   | { ok: false; message: string; line: number; column: number };
 
 /** Mirrors the worker's async-arrow body grammar so valid top-level await/return stay legal. */
-export function buildCodeModeScriptParseSource(code: string): {
-  source: string;
-  codeOffset: number;
-} {
+export function buildCodeModeScriptParseSource(code: string) {
   const prefix = "(async () => {\n";
   return { source: `${prefix}${code}\n})`, codeOffset: prefix.length };
 }
