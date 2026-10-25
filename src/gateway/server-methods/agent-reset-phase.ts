@@ -36,15 +36,6 @@ export type CommittedResetCompletion = {
   replyError?: ErrorShape;
 };
 
-type AgentResetPhaseResult = {
-  stop: boolean;
-  accepted: boolean;
-  requestedSessionKey?: string;
-  resolvedSessionId?: string;
-  effectiveTranscriptInputText: string;
-  message: string;
-};
-
 export async function runAgentResetPhase(params: {
   assertAdmissionCurrent?: () => void;
   request: AgentRunRequest;
@@ -62,7 +53,7 @@ export async function runAgentResetPhase(params: {
   context: GatewayRequestHandlerOptions["context"];
   respond: GatewayRequestHandlerOptions["respond"];
   setCommittedResetCompletion: (completion: CommittedResetCompletion) => void;
-}): Promise<AgentResetPhaseResult> {
+}) {
   const base = {
     requestedSessionKey: params.requestedSessionKey,
     resolvedSessionId: params.resolvedSessionId,
