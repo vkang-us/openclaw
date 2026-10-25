@@ -10,11 +10,7 @@ export async function finalizeDoctorConfigFlow(params: {
   fixHints: string[];
   confirm: (p: { message: string; initialValue: boolean }) => Promise<boolean>;
   note: (message: string, title?: string) => void;
-}): Promise<{
-  cfg: OpenClawConfig;
-  shouldWriteConfig: boolean;
-  confirmedConfigSource: { path: string; hash: string };
-}> {
+}) {
   const confirmedConfigSource = {
     path: params.snapshot.path,
     hash: params.snapshot.hash ?? hashConfigRaw(params.snapshot.raw),
