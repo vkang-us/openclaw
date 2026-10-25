@@ -1,9 +1,5 @@
 import { gatewayCredentialScope } from "@openclaw/gateway-client/browser";
-import type {
-  GatewayBrowserClient,
-  GatewayBrowserClientOptions,
-  GatewayHelloOk,
-} from "../api/gateway.ts";
+import type { GatewayBrowserClient, GatewayHelloOk } from "../api/gateway.ts";
 import { loadCurrentDeviceAuthToken } from "../lib/nodes/index.ts";
 import {
   bootRecordOwner,
@@ -17,11 +13,6 @@ import { clearWarmBootState } from "./bootstrap-warm-boot.ts";
 import type { ApplicationGatewayConnection } from "./gateway.ts";
 import { isRemoteControlUiIngress } from "./remote-ingress.ts";
 
-type GatewayCredentials = Pick<
-  GatewayBrowserClientOptions,
-  "offlineRecoveryScope" | "url" | "token" | "bootstrapToken" | "bootstrapProfile" | "password"
->;
-
 /** Credential admission owns both the read boot record and its successor hello. */
 export function createGatewayCredentials(ownsWarmBoot: boolean) {
   const canOwnWarmBoot = ownsWarmBoot && !isRemoteControlUiIngress();
@@ -33,7 +24,7 @@ export function createGatewayCredentials(ownsWarmBoot: boolean) {
       connection: ApplicationGatewayConnection,
       credentialsChanged: boolean,
       previousClient: Pick<GatewayBrowserClient, "offlineRecoveryScope"> | null,
-    ): GatewayCredentials {
+    ) {
       scope = gatewayCredentialScope(connection.gatewayUrl);
       const boot =
         canOwnWarmBoot && !credentialsChanged && !connection.bootstrapToken && !connection.password

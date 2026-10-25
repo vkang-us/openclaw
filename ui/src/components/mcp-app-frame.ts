@@ -1,4 +1,4 @@
-import { type AppBridge, McpUiHostContextSchema } from "@modelcontextprotocol/ext-apps/app-bridge";
+import { McpUiHostContextSchema } from "@modelcontextprotocol/ext-apps/app-bridge";
 import { t } from "../i18n/index.ts";
 import { registerMcpAppEnglish } from "../i18n/locales/en-mcp-app.ts";
 import { listen } from "../lib/reactive/listener.ts";
@@ -7,9 +7,6 @@ import { collectMcpAppStyleVariables } from "./mcp-app-theme.ts";
 registerMcpAppEnglish();
 
 type AddCleanup = (cleanup: () => void) => () => void;
-type HostContext = NonNullable<
-  NonNullable<ConstructorParameters<typeof AppBridge>[3]>["hostContext"]
->;
 
 export function buildMcpAppFrameHostContext(
   element: Element | undefined,
@@ -17,7 +14,7 @@ export function buildMcpAppFrameHostContext(
   fillContainer: boolean,
   displayMode: "inline" | "fullscreen",
   availableDisplayModes: Array<"inline" | "fullscreen">,
-): HostContext {
+) {
   const rect = element?.getBoundingClientRect();
   const touch = navigator.maxTouchPoints > 0 || window.matchMedia?.("(pointer: coarse)").matches;
   const themeMode = document.documentElement.dataset.themeMode;
