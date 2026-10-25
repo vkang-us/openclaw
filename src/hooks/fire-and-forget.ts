@@ -58,42 +58,35 @@ export function fireAndForgetHook(
   });
 }
 
-function runFireAndForgetHookJob(
-  state: FireAndForgetHookState,
-  { task, ...job }: FireAndForgetHookJob,
-  maxConcurrency: number,
-): void {
-  // Pending observers need logging metadata, not the invoked factory's captured inputs.
-  state.active += 1;
-  let didLogTimeout = false;
-  const timeout = setTimeout(() => {
-    // Timeout is informational only; the hook promise may still settle
-    // later, but the log should not double-report an eventual rejection.
-    didLogTimeout = true;
-    job.logger(`${job.label}: timed out after ${job.timeoutMs}ms`);
-  }, job.timeoutMs);
-
-  void Promise.resolve()
-    .then(task)
-    .catch((err: unknown) => {
-      if (!didLogTimeout) {
-        job.logger(`${job.label}: ${formatHookErrorForLog(err)}`);
-      }
-    })
-    .finally(() => {
-      clearTimeout(timeout);
-      state.active -= 1;
-      drainFireAndForgetHookQueue(state, maxConcurrency);
-    });
-}
-
 function drainFireAndForgetHookQueue(state: FireAndForgetHookState, maxConcurrency: number): void {
   while (state.active < maxConcurrency) {
     const next = state.queue.shift();
     if (!next) {
       return;
     }
-    runFireAndForgetHookJob(state, next, maxConcurrency);
+    const { task, ...job } = next;
+    // Pending observers need logging metadata, not the invoked factory's captured inputs.
+    state.active += 1;
+    let didLogTimeout = false;
+    const timeout = setTimeout(() => {
+      // Timeout is informational only; the hook promise may still settle
+      // later, but the log should not double-report an eventual rejection.
+      didLogTimeout = true;
+      job.logger(`${job.label}: timed out after ${job.timeoutMs}ms`);
+    }, job.timeoutMs);
+
+    void Promise.resolve()
+      .then(task)
+      .catch((err: unknown) => {
+        if (!didLogTimeout) {
+          job.logger(`${job.label}: ${formatHookErrorForLog(err)}`);
+        }
+      })
+      .finally(() => {
+        clearTimeout(timeout);
+        state.active -= 1;
+        drainFireAndForgetHookQueue(state, maxConcurrency);
+      });
   }
 }
 

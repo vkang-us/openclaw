@@ -161,36 +161,6 @@ function readOpenAICompletionsCompat(model: {
     : undefined;
 }
 
-function resolveOpenAIThinkingPayloadEffort(params: {
-  model: { provider?: unknown; id?: unknown; baseUrl?: unknown; api?: unknown; compat?: unknown };
-  payloadObj: Record<string, unknown>;
-  thinkingLevel: ThinkLevel;
-}) {
-  const provider = normalizeOptionalLowercaseString(params.model.provider);
-  const defaultEffort = mapThinkingLevelToReasoningEffort(params.thinkingLevel);
-  const usesNativeMax = provider === "openai" && supportsOpenAIReasoningEffort(params.model, "max");
-  // Native max-capable models have family-specific lower bounds. Compatible
-  // providers keep literal minimal and max/xhigh until their owners opt in.
-  const needsModelAwareEffort =
-    provider === "openai" &&
-    (params.thinkingLevel === "max" || (params.thinkingLevel === "minimal" && usesNativeMax));
-  const mapped = needsModelAwareEffort
-    ? (resolveOpenAIReasoningEffortForModel({
-        model: params.model,
-        effort: params.thinkingLevel,
-      }) ?? defaultEffort)
-    : defaultEffort;
-  if (mapped !== "minimal" || !hasResponsesWebSearchTool(params.payloadObj.tools)) {
-    return mapped;
-  }
-  return (
-    resolveOpenAIReasoningEffortForModel({
-      model: params.model,
-      effort: "low",
-    }) ?? mapped
-  );
-}
-
 function raiseMinimalReasoningForResponsesWebSearchPayload(params: {
   model: { provider?: unknown; id?: unknown; baseUrl?: unknown; api?: unknown; compat?: unknown };
   payloadObj: Record<string, unknown>;
@@ -384,11 +354,24 @@ export function createOpenAIThinkingLevelWrapper(
         return;
       }
 
-      const reasoningEffort = resolveOpenAIThinkingPayloadEffort({
-        model,
-        payloadObj,
-        thinkingLevel,
-      });
+      const provider = normalizeOptionalLowercaseString(model.provider);
+      const defaultEffort = mapThinkingLevelToReasoningEffort(thinkingLevel);
+      const usesNativeMax = provider === "openai" && supportsOpenAIReasoningEffort(model, "max");
+      // Native max-capable models have family-specific lower bounds. Compatible
+      // providers keep literal minimal and max/xhigh until their owners opt in.
+      const needsModelAwareEffort =
+        provider === "openai" &&
+        (thinkingLevel === "max" || (thinkingLevel === "minimal" && usesNativeMax));
+      const mapped = needsModelAwareEffort
+        ? (resolveOpenAIReasoningEffortForModel({
+            model,
+            effort: thinkingLevel,
+          }) ?? defaultEffort)
+        : defaultEffort;
+      const reasoningEffort =
+        mapped === "minimal" && hasResponsesWebSearchTool(payloadObj.tools)
+          ? (resolveOpenAIReasoningEffortForModel({ model, effort: "low" }) ?? mapped)
+          : mapped;
       if (existingReasoning === "none") {
         payloadObj.reasoning = { effort: reasoningEffort };
         return;

@@ -16,12 +16,6 @@ export function matchAnsiOscAt(input: string, index: number): string | undefined
   return ansiOscAtIndexRegex.exec(input)?.[0];
 }
 
-type AnsiCsiScan = {
-  controls: string[];
-  ended: boolean;
-  value: string;
-};
-
 function isCompatPrefixCode(code: number): boolean {
   return (
     code === 0x5b ||
@@ -202,7 +196,7 @@ export class AnsiSequenceStripper {
 }
 
 /** Scan one CSI parser pass, retaining independently executed C0 controls. */
-export function scanAnsiCsiAt(input: string, index: number): AnsiCsiScan | undefined {
+export function scanAnsiCsiAt(input: string, index: number) {
   const firstCode = input.charCodeAt(index);
   if (firstCode !== 0x9b && (firstCode !== 0x1b || input.charCodeAt(index + 1) !== 0x5b)) {
     return undefined;
