@@ -24,16 +24,6 @@ type ChannelPackageStateAsyncChecker = (
   params: Parameters<ChannelPackageStateChecker>[0],
 ) => boolean | Promise<boolean>;
 
-type ChannelPackageStateMetadata = {
-  specifier?: string;
-  exportName?: string;
-  exportNameAsync?: string;
-  env?: {
-    allOf?: readonly string[];
-    anyOf?: readonly string[];
-  };
-};
-
 const CHANNEL_PACKAGE_STATE_METADATA_KEYS = ["configuredState", "persistedAuthState"] as const;
 type ChannelPackageStateMetadataKey = (typeof CHANNEL_PACKAGE_STATE_METADATA_KEYS)[number];
 
@@ -133,7 +123,7 @@ function listChannelPackageStateModuleLocations(params: {
 function resolveChannelPackageStateMetadata(
   entry: PluginChannelCatalogEntry,
   metadataKey: ChannelPackageStateMetadataKey,
-): ChannelPackageStateMetadata | null {
+) {
   const metadata = entry.channel[metadataKey];
   if (!metadata || typeof metadata !== "object") {
     return null;

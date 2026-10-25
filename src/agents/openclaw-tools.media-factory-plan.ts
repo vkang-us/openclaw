@@ -24,13 +24,6 @@ import {
   loadCapabilityMetadataSnapshot,
 } from "./tools/manifest-capability-availability.js";
 
-type OptionalMediaToolFactoryPlan = {
-  imageGenerate: boolean;
-  videoGenerate: boolean;
-  musicGenerate: boolean;
-  pdf: boolean;
-};
-
 function hasExplicitToolModelConfig(model: AgentModelConfig | undefined): boolean {
   return Boolean(
     resolveAgentModelPrimaryValue(model)?.trim() ||
@@ -188,7 +181,7 @@ export function resolveOptionalMediaToolFactoryPlan(params: {
   toolAllowlist?: string[];
   toolDenylist?: string[];
   preparedModelRuntime?: PreparedModelRuntimeSnapshot;
-}): OptionalMediaToolFactoryPlan {
+}) {
   const defaults = params.config?.agents?.defaults;
   const toolAllowlist = mergeBuiltInFactoryAllowlist(
     params.config?.tools?.allow,

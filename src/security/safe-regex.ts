@@ -1,12 +1,6 @@
 // Performs lightweight safe-regex checks for user-supplied patterns.
 import { expectDefined } from "@openclaw/normalization-core";
 import { pruneMapToMaxSize } from "../infra/map-size.js";
-type QuantifierRead = {
-  consumed: number;
-  minRepeat: number;
-  maxRepeat: number | null;
-};
-
 type TokenState = {
   containsRepetition: boolean;
   hasAmbiguousAlternation: boolean;
@@ -80,7 +74,7 @@ function recordAlternative(frame: ParseFrame): void {
   frame.altMaxLength = Math.max(frame.altMaxLength, frame.branchMaxLength);
 }
 
-function readQuantifier(source: string, index: number): QuantifierRead | null {
+function readQuantifier(source: string, index: number) {
   const ch = source[index];
   const consumed = source[index + 1] === "?" ? 2 : 1;
   if (ch === "*") {
