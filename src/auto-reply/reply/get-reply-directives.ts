@@ -621,7 +621,7 @@ export async function resolveReplyDirectives(params: {
     directives.thinkLevel !== undefined ||
     sessionThinkLevel !== undefined ||
     configuredThinkingDefault !== undefined ||
-    modelState.hasConfiguredThinkingDefault === true;
+    modelState.hasConfiguredThinkingDefault;
 
   // When neither directive nor session nor agent set reasoning, default to model capability
   // (e.g. OpenRouter with reasoning: true). Skip model default when thinking is active

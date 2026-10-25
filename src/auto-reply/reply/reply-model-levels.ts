@@ -86,7 +86,7 @@ export async function createReplyProbeModelLevelResolver(params: {
   const hasExplicitThinkLevel =
     hasTurnOrSessionThinkLevel ||
     params.configuredThinkingDefault !== undefined ||
-    params.modelState.hasConfiguredThinkingDefault === true;
+    params.modelState.hasConfiguredThinkingDefault;
   const hasExplicitReasoningLevel =
     params.directives.reasoningLevel !== undefined ||
     params.sessionEntry.reasoningLevel != null ||
