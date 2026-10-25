@@ -98,14 +98,7 @@ type ShellWrapperCommand = {
   command: string | null;
 };
 
-function resolveShellWrapperCandidate(
-  inputArgv: string[],
-  inspectEnv = false,
-): {
-  argv: string[];
-  token0: string;
-  hasEnvManipulation: boolean;
-} | null {
+function resolveShellWrapperCandidate(inputArgv: string[], inspectEnv = false) {
   let argv = inputArgv;
   let hasEnvManipulation = false;
   for (let depth = 0; depth <= MAX_DISPATCH_WRAPPER_DEPTH; depth++) {
@@ -131,16 +124,7 @@ function resolveShellWrapperCandidate(
   return null;
 }
 
-function resolveShellWrapperPayload(
-  argv: string[],
-  inspectEnv = false,
-): {
-  argv: string[];
-  wrapper: ShellWrapperKind;
-  payload: string;
-  baseExecutable: string;
-  hasEnvManipulation: boolean;
-} | null {
+function resolveShellWrapperPayload(argv: string[], inspectEnv = false) {
   const candidate = resolveShellWrapperCandidate(argv, inspectEnv);
   if (!candidate) {
     return null;

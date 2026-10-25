@@ -192,17 +192,10 @@ export function windowsEscapeArg(value: string): { ok: true; escaped: string } |
 
 type ShellSegmentRenderResult = { ok: true; rendered: string } | { ok: false; reason: string };
 
-type RebuiltShellCommandResult = {
-  ok: boolean;
-  command?: string;
-  reason?: string;
-  segmentCount?: number;
-};
-
 export function rebuildWindowsShellCommandFromSource(params: {
   command: string;
   renderSegment: (rawSegment: string, segmentIndex: number) => ShellSegmentRenderResult;
-}): RebuiltShellCommandResult {
+}) {
   const source = stripWindowsShellWrapper(params.command.trim());
   if (!source) {
     return { ok: false, reason: "empty command" };

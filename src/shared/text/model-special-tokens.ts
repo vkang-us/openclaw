@@ -65,13 +65,7 @@ function findLastBlankLine(text: string): number {
   return lastBlank;
 }
 
-type ProjectedTokenText = {
-  text: string;
-  codeOwnershipPending: boolean;
-  hasRetainedInlineCode: boolean;
-};
-
-function projectModelSpecialTokens(text: string): ProjectedTokenText {
+function projectModelSpecialTokens(text: string) {
   if (!text) {
     return { text, codeOwnershipPending: false, hasRetainedInlineCode: false };
   }

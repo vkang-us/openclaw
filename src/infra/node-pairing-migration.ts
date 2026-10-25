@@ -32,11 +32,6 @@ type LegacyNodePairingRow = {
   lastConnectedAtMs?: number;
 };
 
-type LegacyNodePairingMigrationResult = {
-  migrated: number;
-  orphaned: number;
-};
-
 /**
  * Fold legacy nodes/paired.json rows into device-record node surfaces, then
  * archive the legacy files. Idempotent: after the first run the files carry a
@@ -46,7 +41,7 @@ export async function migrateLegacyNodePairingStore(params?: {
   baseDir?: string;
   cfg?: OpenClawConfig;
   log?: { info: (message: string) => void; warn: (message: string) => void };
-}): Promise<LegacyNodePairingMigrationResult | null> {
+}) {
   const { pendingPath, pairedPath } = resolvePairingPaths(params?.baseDir, "nodes");
   const [pairedRaw, pendingRaw] = await Promise.all([
     readJsonIfExists<unknown>(pairedPath),

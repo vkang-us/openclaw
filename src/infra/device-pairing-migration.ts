@@ -19,11 +19,6 @@ import {
 } from "./pairing-files.js";
 import { canAccess } from "./path-existence.js";
 
-type LegacyDevicePairingMigrationResult = {
-  imported: number;
-  skippedExisting: number;
-};
-
 const SQLITE_TEXT_FIELDS = [
   "displayName",
   "operatorLabel",
@@ -80,7 +75,7 @@ export async function migrateLegacyDevicePairingStore(params?: {
   baseDir?: string;
   cfg?: OpenClawConfig;
   log?: { info: (message: string) => void; warn: (message: string) => void };
-}): Promise<LegacyDevicePairingMigrationResult | null> {
+}) {
   const { dir, pendingPath, pairedPath } = resolvePairingPaths(params?.baseDir, "devices");
   const bootstrapPath = path.join(dir, "bootstrap.json");
   const pairedRaw = await readJsonIfExists<unknown>(pairedPath);
