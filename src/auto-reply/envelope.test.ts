@@ -76,6 +76,21 @@ describe("formatAgentEnvelope", () => {
 describe("formatInboundEnvelope", () => {
   it.each([
     [
+      { chatType: "group", sender: { name: " ", username: "", tag: "   " } },
+      "[Telegram Alice] hello",
+    ],
+    [
+      {
+        chatType: "group",
+        sender: { name: "steipete", id: "c3e32452-0467-47e5-aafa-233cd5dae29f" },
+      },
+      "[Telegram Alice] steipete: hello",
+    ],
+    [
+      { chatType: "group", sender: { name: "Peter", id: "peter@example.com" } },
+      "[Telegram Alice] Peter (peter@example.com): hello",
+    ],
+    [
       {
         channel: "Signal",
         from: "Signal Group id:123",

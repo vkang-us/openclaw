@@ -415,31 +415,6 @@ function parseJsonArguments(
   return safeParseJsonRecord(text.slice(payload.start, payload.end)) ?? null;
 }
 
-function extractXmlishParameterValue(
-  text: string,
-  start: number,
-  end: number,
-  structuralLineBreaks?: StructuralLineBreakOptions,
-): string {
-  let value = text.slice(start, end);
-  if (consumeLineBreak(text, skipHorizontalWhitespace(text, start)) === null) {
-    const boundary = consumeStructuralLineBreakAfterHorizontalWhitespace(
-      text,
-      start,
-      structuralLineBreaks,
-    );
-    if (boundary !== null) {
-      const offset = boundary - start;
-      value = `${value.slice(0, offset)}\n${value.slice(offset)}`;
-    }
-  }
-  const payloadStart = consumeLineBreak(value, 0);
-  if (payloadStart === null) {
-    return value;
-  }
-  return value.slice(payloadStart).replace(/(?:\r\n|[\r\n])$/u, "");
-}
-
 export function parseStandalonePlainTextToolCallBlocks(
   text: string,
   options?: PlainTextToolCallParseOptions,
@@ -471,15 +446,29 @@ export function parseStandalonePlainTextToolCallBlocks(
       const args =
         "parameters" in scan
           ? Object.fromEntries(
-              scan.parameters.map((parameter) => [
-                text.slice(parameter.name.start, parameter.name.end),
-                extractXmlishParameterValue(
-                  text,
-                  parameter.value.start,
-                  parameter.value.end,
-                  structuralLineBreaks,
-                ),
-              ]),
+              scan.parameters.map((parameter) => {
+                const parameterName = text.slice(parameter.name.start, parameter.name.end);
+                const start = parameter.value.start;
+                let value = text.slice(start, parameter.value.end);
+                if (consumeLineBreak(text, skipHorizontalWhitespace(text, start)) === null) {
+                  const boundary = consumeStructuralLineBreakAfterHorizontalWhitespace(
+                    text,
+                    start,
+                    structuralLineBreaks,
+                  );
+                  if (boundary !== null) {
+                    const offset = boundary - start;
+                    value = `${value.slice(0, offset)}\n${value.slice(offset)}`;
+                  }
+                }
+                const payloadStart = consumeLineBreak(value, 0);
+                return [
+                  parameterName,
+                  payloadStart === null
+                    ? value
+                    : value.slice(payloadStart).replace(/(?:\r\n|[\r\n])$/u, ""),
+                ];
+              }),
             )
           : parseJsonArguments(text, scan.payload);
       if (args) {
