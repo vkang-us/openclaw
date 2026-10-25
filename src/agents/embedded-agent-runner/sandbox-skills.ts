@@ -9,7 +9,6 @@ import { resolveExplicitSkillSelectionFileHost } from "../../skills/discovery/sk
 import { formatSkillsForPromptBounded } from "../../skills/loading/skill-prompt-limits.js";
 import { clearSkillFileHost } from "../../skills/skill-file-host.js";
 import type {
-  SkillEligibilityContext,
   ExplicitSkillSelection,
   SkillSnapshot,
   SkillUsagePath,
@@ -104,14 +103,7 @@ export function resolveSandboxSkillRuntimeInputs(params: {
   // snapshot and fallback paths agree.
   skillsAnchorWorkspace: string;
   skillsSnapshot?: SkillSnapshot;
-}): {
-  skillsEligibility?: SkillEligibilityContext;
-  skillUsagePaths?: SkillUsagePath[];
-  skillsPromptWorkspaceDir: string;
-  skillsSnapshot?: SkillSnapshot;
-  skillsWorkspaceDir: string;
-  workspaceOnly: boolean;
-} {
+}) {
   if (params.sandbox?.enabled === true) {
     const skillsWorkspaceDir = params.sandbox.skillsWorkspaceDir ?? params.skillsAnchorWorkspace;
     const skillsPromptWorkspaceDir =
