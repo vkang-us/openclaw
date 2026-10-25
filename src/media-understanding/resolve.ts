@@ -110,13 +110,7 @@ export function resolveMaxBytes(params: MediaEntryRunParams): number {
   );
 }
 
-export function resolveEntryRunOptions(params: MediaEntryRunParams): {
-  maxBytes: number;
-  maxChars?: number;
-  timeoutMs: number;
-  prompt: string;
-  hasConfiguredPrompt: boolean;
-} {
+export function resolveEntryRunOptions(params: MediaEntryRunParams) {
   const { capability, entry, cfg } = params;
   const maxBytes = resolveMaxBytes(params);
   const maxChars = resolveMaxChars(params);

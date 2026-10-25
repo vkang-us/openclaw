@@ -117,13 +117,7 @@ export async function offerLiveModelVerification(params: {
   configTarget: SetupInferenceConfigTarget;
   required?: boolean;
   assertCurrent?: () => void;
-}): Promise<{
-  config: OpenClawConfig;
-  attempted: boolean;
-  persisted: boolean;
-  verified: boolean;
-  modelRef?: string;
-}> {
+}) {
   const assertCurrent =
     params.assertCurrent ??
     (params.opts.nonInteractive

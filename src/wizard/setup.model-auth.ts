@@ -28,11 +28,7 @@ async function resolveAuthChoiceModelSelectionPolicy(params: {
   config: OpenClawConfig;
   workspaceDir?: string;
   resolvePreferredProviderForAuthChoice: (typeof import("../plugins/provider-auth-choice-preference.js"))["resolvePreferredProviderForAuthChoice"];
-}): Promise<{
-  preferredProvider?: string;
-  promptWhenAuthChoiceProvided: boolean;
-  allowKeepCurrent: boolean;
-}> {
+}) {
   const preferredProvider = await params.resolvePreferredProviderForAuthChoice({
     choice: params.authChoice,
     config: params.config,

@@ -1,9 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import {
-  resolveOnboardingWorkspaceConflict,
-  type OnboardingWorkspaceConflict,
-} from "../commands/onboard-config.js";
+import { resolveOnboardingWorkspaceConflict } from "../commands/onboard-config.js";
 import type { OpenClawConfig } from "../config/types.openclaw.js";
 import { isMissingPathError } from "../infra/errno.js";
 import { extractErrorCode, formatErrorMessageWithCode } from "../infra/errors.js";
@@ -56,11 +53,7 @@ export async function resolveSetupWorkspaceSelection(params: {
   hasAuthoredRoster?: boolean;
   /** Workspace already approved by the current setup receipt. */
   approvedWorkspaceDir?: string;
-}): Promise<{
-  workspaceDir: string;
-  allowWorkspaceChange: boolean;
-  conflict?: OnboardingWorkspaceConflict;
-}> {
+}) {
   const workspaceError = validateSetupWorkspacePath(params.requestedWorkspaceDir);
   if (workspaceError) {
     throw new Error(workspaceError);
