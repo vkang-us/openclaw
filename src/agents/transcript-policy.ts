@@ -15,7 +15,6 @@ import { buildAnthropicReplayPolicyForModel } from "../plugins/provider-replay-h
 import type { ProviderRuntimeModel } from "../plugins/provider-runtime-model.types.js";
 import type { ProviderReplayPolicy } from "../plugins/types.js";
 import { isAnthropicApi } from "./embedded-agent-helpers/anthropic-api.js";
-import { isGoogleModelApi } from "./embedded-agent-helpers/google.js";
 import type { TranscriptPolicy } from "./transcript-policy.types.js";
 
 const DEFAULT_TRANSCRIPT_POLICY: TranscriptPolicy = {
@@ -63,7 +62,10 @@ function buildUnownedProviderTransportReplayFallback(params: {
   model?: ProviderRuntimeModel;
   inHistorySystemUpdates: boolean;
 }): ProviderReplayPolicy | undefined {
-  const isGoogle = isGoogleModelApi(params.modelApi);
+  const isGoogle =
+    params.modelApi === "google-gemini-cli" ||
+    params.modelApi === "google-generative-ai" ||
+    params.modelApi === "google-interactions";
   if (isAnthropicApi(params.modelApi)) {
     return {
       ...buildAnthropicReplayPolicyForModel(
