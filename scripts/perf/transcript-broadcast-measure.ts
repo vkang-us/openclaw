@@ -1,3 +1,16 @@
+// On a fresh team-shape fixture, exercise sidebar/search and usage refresh with:
+// node --import ./scripts/tsx.mjs scripts/perf/transcript-broadcast-measure.ts \
+//   --state-dir <fixture> --entry dist/entry.js --scenario memory-soak \
+//   --clients 64 --exact-clients 4 --runs 8 --plugins 40 --row-mode sidebar \
+//   --chunks 500 --chunk-interval-ms 10 --warmup-ms 60000 --duration-ms 600000 \
+//   --soak-rounds 40 --round-interval-ms 15000 --memory-interval-ms 15000 \
+//   --retained-profile-ms 0 --stress-tools --mixed-rpc --dashboard-rpc \
+//   --list-filter-churn --usage-rpc --list-interval-ms 1000 --poll-seed usage \
+//   --diagnostics --port 41712 --mock-port 41714 --revision <sha>
+// List churn rotates the existing filters and patches a label every tenth list.
+// Usage polling adds usage.cost and bounded sessions.usage overview reads to the
+// mixed rotation; each round reports response cache statuses, including partials.
+// Use separate matching --allocations passes; their traced GC timing is diagnostic.
 import { spawn, type ChildProcess } from "node:child_process";
 import { createCipheriv, createHash, randomUUID } from "node:crypto";
 import { once } from "node:events";
@@ -100,6 +113,7 @@ const { values } = parseArgs({
     "authority-source-preload": { type: "string" },
     "stress-subagents": { type: "boolean", default: false },
     "mixed-rpc": { type: "boolean", default: false },
+    "usage-rpc": { type: "boolean", default: false },
     "dashboard-rpc": { type: "boolean", default: false },
     "github-options-connected": { type: "boolean", default: false },
     "github-options-observe": { type: "boolean", default: false },
@@ -260,8 +274,8 @@ const startupSourcePreload = values["startup-source-preload"]
     }
   : undefined;
 const retentionScenario = scenario === "attempt-retention";
-if (values["list-filter-churn"] && scenario !== "sessions.list") {
-  throw new Error("--list-filter-churn requires --scenario sessions.list");
+if (values["list-filter-churn"] && !["sessions.list", "memory-soak"].includes(scenario)) {
+  throw new Error("--list-filter-churn requires sessions.list or memory-soak");
 }
 const idleScenario = scenario === "session-idle-retention";
 const soakScenario = scenario === "memory-soak";
@@ -618,6 +632,12 @@ if (values["mixed-rpc"] && (!listIntervalMs || !turnScenario || clientCount < 4)
 }
 if (values["dashboard-rpc"] && (!soakScenario || !values["mixed-rpc"])) {
   throw new Error("--dashboard-rpc requires memory-soak and --mixed-rpc");
+}
+if (values["usage-rpc"] && (!soakScenario || !values["mixed-rpc"])) {
+  throw new Error("--usage-rpc requires memory-soak and --mixed-rpc");
+}
+if (values["list-filter-churn"] && soakScenario && !listIntervalMs) {
+  throw new Error("memory-soak --list-filter-churn requires --list-interval-ms");
 }
 if (values["github-options-connected"] && !values["dashboard-rpc"]) {
   throw new Error("--github-options-connected requires --dashboard-rpc");
@@ -2620,6 +2640,7 @@ const mixedRpcMethods = [
   "sessions.diff",
   "connect",
   ...dashboardRpcShapes.map(({ method }) => method),
+  ...(values["usage-rpc"] ? ["usage.cost", "sessions.usage"] : []),
 ];
 const stressParentKey = "agent:main:transcript-broadcast-measure-native-parent";
 const keys = Array.from({ length: sessionCount }, (_, index) =>
@@ -5167,6 +5188,7 @@ try {
       mixedRpcMethods.map((method) => [method, []]),
     );
     const listLatencies = rpcLatencies["sessions.list"]!;
+    const usageCacheStatuses: Record<string, number> = {};
     const initialPollPhasesMs: number[] = [];
     let streamStart: Awaited<ReturnType<typeof runRound>> | undefined;
     const listRequests: Array<{
@@ -5197,11 +5219,13 @@ try {
                   await Promise.race([delay(initialPhaseMs, undefined, { ref: false }), stopped]);
                 }
                 let poll = clientIndex;
+                let listPoll = round * clientCount + clientIndex;
                 while (true) {
                   if (!polling) {
                     break;
                   }
                   const started = performance.now();
+                  let requestStarted = started;
                   let responseId = "";
                   let diffSessionKey: string | undefined;
                   let githubOptionsSessionKey: string | undefined;
@@ -5239,6 +5263,31 @@ try {
                         onResponse,
                       ),
                     );
+                  } else if (method === "usage.cost" || method === "sessions.usage") {
+                    const usage = await rpc(
+                      client,
+                      method,
+                      {
+                        agentId: "main",
+                        range: "all",
+                        ...(method === "sessions.usage" ? { projection: "overview", limit } : {}),
+                      },
+                      onResponse,
+                    );
+                    if (
+                      !isRecord(usage) ||
+                      !isRecord(usage.totals) ||
+                      typeof usage.totals.totalTokens !== "number" ||
+                      typeof usage.totals.totalCost !== "number" ||
+                      !Array.isArray(method === "usage.cost" ? usage.daily : usage.sessions)
+                    ) {
+                      throw new Error(`${method} did not return a usage report`);
+                    }
+                    const cacheStatus = isRecord(usage.cacheStatus)
+                      ? String(usage.cacheStatus.status)
+                      : "unspecified";
+                    const statusKey = `${method}:${cacheStatus}`;
+                    usageCacheStatuses[statusKey] = (usageCacheStatuses[statusKey] ?? 0) + 1;
                   } else if (method === "connect") {
                     const peer = createGatewayWsClient(clientConnection);
                     trackClientFrames(peer);
@@ -5299,13 +5348,25 @@ try {
                       target.worktree,
                     );
                   } else {
+                    const listSequence = listPoll;
+                    listPoll += clientCount;
+                    if (values["list-filter-churn"] && listSequence % 10 === 0) {
+                      const params = {
+                        key: parentKey,
+                        label: `Synthetic list filter churn ${listChurnSequence++}`,
+                      };
+                      assertSessionPatch(params, await rpc(client, "sessions.patch", params));
+                    }
+                    requestStarted = performance.now();
                     const page = await rpc(
                       client,
                       method,
                       {
                         rowMode,
                         limit,
-                        archived: "all",
+                        ...(values["list-filter-churn"]
+                          ? listFilterShapes[listSequence % listFilterShapes.length]
+                          : { archived: "all" }),
                         ...(values["list-profile-reference"]
                           ? { involvingProfileId: values["list-profile-reference"] }
                           : {}),
@@ -5324,7 +5385,7 @@ try {
                     }
                   }
                   const ended = performance.now();
-                  const requestDurationMs = ended - started;
+                  const requestDurationMs = ended - requestStarted;
                   rpcLatencies[method]!.push(requestDurationMs);
                   if (recordListRequests) {
                     listRequests.push({
@@ -5332,7 +5393,7 @@ try {
                       responseId,
                       client: clientIndex,
                       round,
-                      startedAtEpochMs: performance.timeOrigin + started,
+                      startedAtEpochMs: performance.timeOrigin + requestStarted,
                       endedAtEpochMs: performance.timeOrigin + ended,
                       durationMs: requestDurationMs,
                       ...(diffSessionKey ? { diffSessionKey } : {}),
@@ -5673,6 +5734,7 @@ try {
       activeWorkCounts,
       toolCalls,
       toolResults,
+      ...(values["usage-rpc"] ? { usageCacheStatuses } : {}),
       ...(reasoningScenario && { reasoningResponses, reasoningReplayRequests }),
       verifyHistoryReplay,
       ...(verifyHistoryReplay ? { historicalReplayRequests } : {}),
@@ -6142,6 +6204,7 @@ try {
     sessionEnvelopeRefs: values["session-envelope-refs"],
     listIntervalMs,
     mixedRpc: values["mixed-rpc"],
+    usageRpc: values["usage-rpc"],
     ...(values["dashboard-rpc"]
       ? {
           dashboardRpc: {
