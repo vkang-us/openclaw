@@ -7,7 +7,6 @@ import type { GatewayBrowserClient } from "../../api/gateway.ts";
 import { t } from "../../i18n/index.ts";
 import { registerNewSessionSetupEnglish } from "../../i18n/locales/en-new-session-setup.ts";
 import { registerSessionPlacementEnglish } from "../../i18n/locales/en-session-placement.ts";
-import type { DraftCloudProfile, DraftEnvironment } from "./discovery.ts";
 
 registerNewSessionSetupEnglish();
 registerSessionPlacementEnglish();
@@ -15,11 +14,7 @@ registerSessionPlacementEnglish();
 export async function requestPlaceCatalog(
   client: Pick<GatewayBrowserClient, "request">,
   runtimeId?: string,
-): Promise<{
-  profiles: DraftCloudProfile[];
-  environments: DraftEnvironment[];
-  suggestedProfile?: EnvironmentsListResult["suggestedProfile"];
-}> {
+) {
   const result = await client.request<EnvironmentsListResult>(
     "environments.list",
     runtimeId ? { runtimeId } : {},

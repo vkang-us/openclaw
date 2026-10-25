@@ -85,10 +85,7 @@ const buildQuerySuggestions = (
   query: string,
   terms: ReturnType<typeof extractQueryTerms>,
   options: SessionsUsageOverview["filterOptions"],
-): {
-  label: string;
-  value: string;
-}[] => {
+) => {
   if (!query.trim()) {
     return [];
   }

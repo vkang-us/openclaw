@@ -105,11 +105,7 @@ export type UpdateRestartStatusResponse = {
 
 type UpdateFailureCause = { step: string; detail: string };
 
-export function projectUpdateSentinel(sentinel: UpdateRestartStatusResponse["sentinel"]): {
-  attempt: RecordedUpdateAttempt | null;
-  banner: ApplicationStatusBanner | null;
-  failure: UpdateFailureTriage | null;
-} | null {
+export function projectUpdateSentinel(sentinel: UpdateRestartStatusResponse["sentinel"]) {
   if (sentinel?.kind !== "update" || !sentinel.status) {
     return null;
   }

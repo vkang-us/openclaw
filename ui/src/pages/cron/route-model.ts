@@ -4,11 +4,7 @@ import type { ApplicationGateway } from "../../app/gateway.ts";
 import type { CronState } from "../../lib/cron/types.ts";
 import { formatUiError } from "../../lib/format-error.ts";
 
-export function resolveCronRouteData(search: string): {
-  jobId: string | null;
-  runId: string | null;
-  session?: { sessionKey: string; sessionAgentId: string };
-} {
+export function resolveCronRouteData(search: string) {
   const params = new URLSearchParams(search);
   const jobId = params.get("job")?.trim() || null;
   const sessionKey = params.get("session")?.trim();
