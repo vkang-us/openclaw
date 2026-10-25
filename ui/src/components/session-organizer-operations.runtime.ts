@@ -81,132 +81,6 @@ function sessionDeleteSkipPreference(
   };
 }
 
-/** One confirm and one preserved-worktrees alert for the whole selection. */
-export async function deleteSessionsBatch(
-  deps: SessionOrganizerDependencies,
-  rows: readonly SidebarRecentSession[],
-  scope: SidebarSessionMutationScope,
-) {
-  if (rows.length === 0) {
-    return;
-  }
-  const confirmed = await showConfirmDialog({
-    message: t("sessionsView.deleteSessionsConfirm", { count: String(rows.length) }),
-    confirmLabel: t("common.delete"),
-    danger: true,
-    skipPreference: sessionDeleteSkipPreference(scope),
-    signal: scope.signal,
-  });
-  // A reconnect or a replaced sessions capability can land while the modal is
-  // open, so the captured scope is revalidated before any delete leaves here.
-  // Checked ahead of `confirmed`: a retired scope aborts the dialog to `false`
-  // too, so without this order the operator's lost intent would look like an
-  // ordinary cancel instead of the reconnect that actually dropped it.
-  if (!deps.sessionData.isSessionMutationScopeCurrent(scope)) {
-    showToast({ message: t("sessionsView.deleteSessionsStale", { count: String(rows.length) }) });
-    return;
-  }
-  if (!confirmed) {
-    return;
-  }
-  const requests = rows.map((row) => ({
-    key: row.key,
-    agentId: resolveUiSessionRowAgentId(row, scope.selectedAgentId),
-    deleteTranscript: true,
-    ...(row.sessionId ? { expectedSessionId: row.sessionId } : {}),
-    ...(row.archived === true ? { archivedOnly: true } : {}),
-  }));
-  for (const params of requests) {
-    if (
-      !requireSessionMutationAccess(deps, scope, {
-        method: "sessions.delete",
-        params,
-        allowDeferred: true,
-      })
-    ) {
-      return;
-    }
-  }
-  try {
-    const result = await scope.sessions.deleteMany(requests);
-    if (result.queued?.length) {
-      return;
-    }
-    if (!deps.sessionData.isSessionMutationScopeCurrent(scope)) {
-      if (result.preservedWorktrees.length > 0) {
-        showToast({ message: formatPreservedWorktreesNotice(result.preservedWorktrees) });
-      }
-      return;
-    }
-    if (deps.sidebarSessionStatusFilter() !== "active") {
-      await deps.sessionData.refreshSidebarSessions(scope.selectedAgentId);
-      if (!deps.sessionData.isSessionMutationScopeCurrent(scope)) {
-        return;
-      }
-    }
-    if (result.preservedWorktrees.length > 0) {
-      window.alert(formatPreservedWorktreesNotice(result.preservedWorktrees));
-      if (!deps.sessionData.isSessionMutationScopeCurrent(scope)) {
-        return;
-      }
-    }
-    if (result.errors.length > 0) {
-      deps.sessionData.publishSessionMutationError(
-        scope,
-        result.errors.map(({ error }) => formatBatchSessionRemovalError(error)).join("; "),
-      );
-    }
-  } catch (error) {
-    deps.sessionData.publishSessionMutationError(scope, error);
-  }
-}
-
-/**
- * Reading a parent also acknowledges the hidden runs folded into its unread state.
- * These reads are implicit, so they stay conditional: a manual unread marker on a
- * run, including one set after this snapshot, survives at the Gateway.
- */
-async function acknowledgeUnreadHiddenRuns(
-  deps: SessionActionHost,
-  rows: readonly SidebarRecentSession[],
-  scope: SidebarSessionMutationScope,
-): Promise<void> {
-  const selected = new Set(rows.map((row) => row.key));
-  const runs = new Map<string, SidebarRecentSession>();
-  for (const run of rows.flatMap((row) => row.subagentSummary?.unreadHiddenRuns ?? [])) {
-    if (!selected.has(run.key)) {
-      runs.set(run.key, run);
-    }
-  }
-  await Promise.all(
-    [...runs.values()].map(async (run) => {
-      if (!deps.sessionData.isSessionMutationScopeCurrent(scope)) {
-        return;
-      }
-      const agentId = resolveUiSessionRowAgentId(run, scope.selectedAgentId);
-      const expectedSessionId = run.sessionId ? { expectedSessionId: run.sessionId } : {};
-      const access = readSessionMethodAccess(scope.gateway.snapshot, {
-        method: "sessions.patch",
-        params: { key: run.key, unread: false, agentId, ...expectedSessionId },
-        sessionScope: true,
-        session: run,
-      });
-      // Runs the caller cannot patch keep their state without a second error.
-      if (!access.allowed) {
-        return;
-      }
-      // The capability publishes request failures once.
-      await scope.sessions
-        .patch(
-          run.key,
-          { unread: false },
-          { agentId, expectedMarkedUnreadAt: null, ...expectedSessionId },
-        )
-        .catch(() => undefined);
-    }),
-  );
-}
-
 // A child may temporarily render as a root while its parent is archived.
 // Pinnability retains the durable lineage; hidden workers are never promoted.
 function needsGroupPromotion(session: SessionActionRow): boolean {
@@ -257,7 +131,45 @@ export async function runBatchSessionAction(
     case "toggle-unread":
       await patchSessionRows(deps, rows, { unread: !allUnread }, scope, { sessionScope: true });
       if (allUnread) {
-        await acknowledgeUnreadHiddenRuns(deps, rows, scope);
+        /**
+         * Reading a parent also acknowledges the hidden runs folded into its unread state.
+         * These reads are implicit, so they stay conditional: a manual unread marker on a
+         * run, including one set after this snapshot, survives at the Gateway.
+         */
+        const selected = new Set(rows.map((row) => row.key));
+        const runs = new Map<string, SidebarRecentSession>();
+        for (const run of rows.flatMap((row) => row.subagentSummary?.unreadHiddenRuns ?? [])) {
+          if (!selected.has(run.key)) {
+            runs.set(run.key, run);
+          }
+        }
+        await Promise.all(
+          [...runs.values()].map(async (run) => {
+            if (!deps.sessionData.isSessionMutationScopeCurrent(scope)) {
+              return;
+            }
+            const agentId = resolveUiSessionRowAgentId(run, scope.selectedAgentId);
+            const expectedSessionId = run.sessionId ? { expectedSessionId: run.sessionId } : {};
+            const access = readSessionMethodAccess(scope.gateway.snapshot, {
+              method: "sessions.patch",
+              params: { key: run.key, unread: false, agentId, ...expectedSessionId },
+              sessionScope: true,
+              session: run,
+            });
+            // Runs the caller cannot patch keep their state without a second error.
+            if (!access.allowed) {
+              return;
+            }
+            // The capability publishes request failures once.
+            await scope.sessions
+              .patch(
+                run.key,
+                { unread: false },
+                { agentId, expectedMarkedUnreadAt: null, ...expectedSessionId },
+              )
+              .catch(() => undefined);
+          }),
+        );
       }
       break;
     case "move-to-group":
@@ -281,9 +193,84 @@ export async function runBatchSessionAction(
         );
       }
       break;
-    case "delete":
-      await deleteSessionsBatch(deps, rows, scope);
+    case "delete": {
+      /** One confirm and one preserved-worktrees alert for the whole selection. */
+      if (rows.length === 0) {
+        return;
+      }
+      const confirmed = await showConfirmDialog({
+        message: t("sessionsView.deleteSessionsConfirm", { count: String(rows.length) }),
+        confirmLabel: t("common.delete"),
+        danger: true,
+        skipPreference: sessionDeleteSkipPreference(scope),
+        signal: scope.signal,
+      });
+      // A reconnect or a replaced sessions capability can land while the modal is
+      // open, so the captured scope is revalidated before any delete leaves here.
+      // Checked ahead of `confirmed`: a retired scope aborts the dialog to `false`
+      // too, so without this order the operator's lost intent would look like an
+      // ordinary cancel instead of the reconnect that actually dropped it.
+      if (!deps.sessionData.isSessionMutationScopeCurrent(scope)) {
+        showToast({
+          message: t("sessionsView.deleteSessionsStale", { count: String(rows.length) }),
+        });
+        return;
+      }
+      if (!confirmed) {
+        return;
+      }
+      const requests = rows.map((row) => ({
+        key: row.key,
+        agentId: resolveUiSessionRowAgentId(row, scope.selectedAgentId),
+        deleteTranscript: true,
+        ...(row.sessionId ? { expectedSessionId: row.sessionId } : {}),
+        ...(row.archived === true ? { archivedOnly: true } : {}),
+      }));
+      for (const params of requests) {
+        if (
+          !requireSessionMutationAccess(deps, scope, {
+            method: "sessions.delete",
+            params,
+            allowDeferred: true,
+          })
+        ) {
+          return;
+        }
+      }
+      try {
+        const result = await scope.sessions.deleteMany(requests);
+        if (result.queued?.length) {
+          return;
+        }
+        if (!deps.sessionData.isSessionMutationScopeCurrent(scope)) {
+          if (result.preservedWorktrees.length > 0) {
+            showToast({ message: formatPreservedWorktreesNotice(result.preservedWorktrees) });
+          }
+          return;
+        }
+        if (deps.sidebarSessionStatusFilter() !== "active") {
+          await deps.sessionData.refreshSidebarSessions(scope.selectedAgentId);
+          if (!deps.sessionData.isSessionMutationScopeCurrent(scope)) {
+            return;
+          }
+        }
+        if (result.preservedWorktrees.length > 0) {
+          window.alert(formatPreservedWorktreesNotice(result.preservedWorktrees));
+          if (!deps.sessionData.isSessionMutationScopeCurrent(scope)) {
+            return;
+          }
+        }
+        if (result.errors.length > 0) {
+          deps.sessionData.publishSessionMutationError(
+            scope,
+            result.errors.map(({ error }) => formatBatchSessionRemovalError(error)).join("; "),
+          );
+        }
+      } catch (error) {
+        deps.sessionData.publishSessionMutationError(scope, error);
+      }
       break;
+    }
     default:
       break;
   }

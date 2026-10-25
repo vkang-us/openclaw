@@ -34,7 +34,6 @@ import {
   createSessionGroup,
   deleteSession,
   deleteSessionGroup,
-  deleteSessionsBatch,
   patchSession,
   runBatchSessionAction,
   stopCloudWorker,
@@ -463,8 +462,7 @@ function cloudWorkerRow(hasActiveRun: boolean): SidebarRecentSession {
 const destructiveOperations = [
   {
     name: "batch delete",
-    run: (h: OperationsHarness) =>
-      deleteSessionsBatch(h.host, [sessionRow(0), sessionRow(1)], h.scope),
+    run: (h: OperationsHarness) => h.action({ kind: "delete" }, [sessionRow(0), sessionRow(1)]),
     mutation: (h: OperationsHarness) => h.deleteMany,
     staleMessage: t("sessionsView.deleteSessionsStale", { count: "2" }),
   },
@@ -530,7 +528,7 @@ describe("session organizer destructive confirmations", () => {
     });
     const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => undefined);
 
-    const pending = deleteSessionsBatch(h.host, rows, h.scope);
+    const pending = h.action({ kind: "delete" }, rows);
     const actions = await waitForConfirmDialogActions();
     expect(document.body.querySelector("openclaw-modal-dialog")?.textContent).toContain(
       "Delete 2 sessions and their transcripts?",
