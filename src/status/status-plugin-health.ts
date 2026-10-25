@@ -160,10 +160,7 @@ function getReportableDiagnostics(snapshot: StatusPluginHealthSnapshot): PluginD
   );
 }
 
-function countProblemDiagnostics(diagnostics: readonly PluginDiagnosticRecord[]): {
-  errors: number;
-  warnings: number;
-} {
+function countProblemDiagnostics(diagnostics: readonly PluginDiagnosticRecord[]) {
   return {
     errors: diagnostics.filter((entry) => entry.level === "error").length,
     warnings: diagnostics.filter((entry) => entry.level === "warn").length,
