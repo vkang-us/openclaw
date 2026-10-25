@@ -1,8 +1,5 @@
 import { createHash, hash } from "node:crypto";
-import {
-  serializeModelRequestBody,
-  type EncodedModelRequestBody,
-} from "@openclaw/ai/internal/model-request-body";
+import { serializeModelRequestBody } from "@openclaw/ai/internal/model-request-body";
 import { sha256Hex, sha256StableValue } from "@openclaw/normalization-core/node-crypto";
 import { isRecord } from "@openclaw/normalization-core/record-coerce";
 
@@ -161,22 +158,7 @@ function fingerprintSerializedPrompt(
   };
 }
 
-export function prepareProviderPrompt({ payload, encode }: ProviderPromptTask): {
-  digest: string;
-  byteWeight: number;
-  encoded: EncodedModelRequestBody | undefined;
-  cachePrefix?: ProviderPromptCachePrefix;
-  wire?: {
-    requestBytes: number;
-    prefixBytes: number;
-    prefixHash: string;
-    cacheKeyPresent: boolean;
-    cacheKeyHash?: string;
-    previousResponseIdPresent: boolean;
-    modelHash?: string;
-    serviceTier?: string;
-  };
-} {
+export function prepareProviderPrompt({ payload, encode }: ProviderPromptTask) {
   if (!encode) {
     return { ...sha256StableValue(payload), encoded: undefined };
   }

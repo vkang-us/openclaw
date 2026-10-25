@@ -16,7 +16,6 @@ import { resolveAgentHarnessPolicy } from "../../agents/harness/policy.js";
 import { resolveModelProviderAuthConfig } from "../../agents/model-auth-provider-route.js";
 import type { ModelCatalogEntry } from "../../agents/model-catalog.js";
 import type { ModelCatalogSnapshot } from "../../agents/model-catalog.types.js";
-import type { ModelFallbackRouteResolution } from "../../agents/model-fallback.types.js";
 import { splitTrailingAuthProfile } from "../../agents/model-ref-profile.js";
 import {
   normalizeProviderId,
@@ -28,10 +27,7 @@ import {
   resolveThinkingDefault,
 } from "../../agents/model-selection.js";
 import { resolveConfiguredThinkingDefault } from "../../agents/model-thinking-default.js";
-import {
-  createModelVisibilityPolicy,
-  type ModelVisibilityPolicy,
-} from "../../agents/model-visibility-policy.js";
+import { createModelVisibilityPolicy } from "../../agents/model-visibility-policy.js";
 import { OPENAI_PROVIDER_ID } from "../../agents/openai-routing.js";
 import { resolveOperatorModelDefault } from "../../agents/operator-model-policy.js";
 import { resolveEffectiveAgentRuntime } from "../../agents/thinking-runtime.js";
@@ -68,32 +64,6 @@ type ThinkingDefaultSelection = {
   provider: string;
   model: string;
   agentRuntime?: string | null;
-};
-
-type ModelSelectionState = {
-  provider: string;
-  model: string;
-  requestedRouteResolution: ModelFallbackRouteResolution;
-  modelPolicy: ModelVisibilityPolicy;
-  operatorAuthority?: AdmittedRunOperatorAuthority;
-  /** Caller-only selection; auth resolution must preserve shared session pins. */
-  operatorModelOverride?: boolean;
-  allowedModelKeys: Set<string>;
-  allowedModelCatalog: ModelCatalog;
-  resetModelOverride: boolean;
-  resetModelOverrideRef?: string;
-  resetModelOverrideReason?: "disallowed" | "stale" | "temporarily-unavailable";
-  modelPolicyConfigPath?: string;
-  modelPolicyRepairConfigPath?: string;
-  resolveThinkingCatalog: (
-    selection?: ThinkingDefaultSelection,
-  ) => Promise<ModelCatalog | undefined>;
-  resolveDefaultThinkingLevel: (selection?: ThinkingDefaultSelection) => Promise<ThinkLevel>;
-  hasConfiguredThinkingDefault?: boolean;
-  /** Default reasoning level from model capability: "on" if model has reasoning, else "off". */
-  resolveDefaultReasoningLevel: (selection?: ThinkingDefaultSelection) => Promise<"on" | "off">;
-  modelContextWindow?: number;
-  modelContextTokens?: number;
 };
 
 const modelCatalogRuntimeLoader = createLazyImportLoader(
@@ -160,7 +130,7 @@ export async function createModelSelectionState(params: {
   hasResolvedTurnModelOverride?: boolean;
   preparedModelCatalog?: ModelCatalogSnapshot;
   operatorAuthority?: AdmittedRunOperatorAuthority;
-}): Promise<ModelSelectionState> {
+}) {
   const operatorAuthority = params.operatorAuthority;
   if (operatorAuthority) {
     assertAdmittedRunOperatorAuthority(operatorAuthority);
@@ -476,6 +446,7 @@ export async function createModelSelectionState(params: {
     }
     ({ provider, model } = allowedInitialSelection);
   }
+  /** Caller-only selection; auth resolution must preserve shared session pins. */
   let operatorModelOverride = false;
   if (!params.hasModelDirective) {
     const selection = modelSelectionLocked
@@ -658,6 +629,7 @@ export async function createModelSelectionState(params: {
       model,
     }) !== undefined;
 
+  /** Default reasoning level from model capability: "on" if model has reasoning, else "off". */
   const resolveDefaultReasoningLevel = async (
     selection: ThinkingDefaultSelection = { provider, model },
   ): Promise<"on" | "off"> =>
@@ -674,7 +646,7 @@ export async function createModelSelectionState(params: {
   return {
     provider,
     model,
-    requestedRouteResolution: "resolved",
+    requestedRouteResolution: "resolved" as const,
     modelPolicy: visibilityPolicy,
     ...(operatorAuthority ? { operatorAuthority } : {}),
     ...(operatorModelOverride ? { operatorModelOverride } : {}),

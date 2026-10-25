@@ -9,23 +9,24 @@ export function createModelSelectionStateFixture(params: {
   provider: string;
   model: string;
 }): Awaited<ReturnType<typeof createModelSelectionState>> {
+  const modelPolicy = createModelVisibilityPolicy({
+    cfg: { agents: { defaults: params.agentCfg } },
+    catalog: [],
+    defaultProvider: params.provider,
+    defaultModel: params.model,
+  });
   return {
     provider: params.provider,
     model: params.model,
     requestedRouteResolution: "resolved",
-    modelPolicy: createModelVisibilityPolicy({
-      cfg: { agents: { defaults: params.agentCfg } },
-      catalog: [],
-      defaultProvider: params.provider,
-      defaultModel: params.model,
-    }),
+    modelPolicy,
     allowedModelKeys: new Set<string>(),
     allowedModelCatalog: [],
     resetModelOverride: false,
     resetModelOverrideRef: undefined,
     resetModelOverrideReason: undefined,
     modelPolicyConfigPath: undefined,
-    modelPolicyRepairConfigPath: undefined,
+    modelPolicyRepairConfigPath: modelPolicy.allowRepairConfigPath,
     resolveThinkingCatalog: async () => [],
     resolveDefaultThinkingLevel: async () => params.agentCfg?.thinkingDefault as ThinkLevel,
     hasConfiguredThinkingDefault: params.agentCfg?.thinkingDefault !== undefined,

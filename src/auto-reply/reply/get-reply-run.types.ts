@@ -1,5 +1,6 @@
 import type { FastMode } from "@openclaw/normalization-core/string-coerce";
 import type { AutoFallbackPrimaryProbe } from "../../agents/agent-scope.js";
+import type { ModelFallbackRouteResolution } from "../../agents/model-fallback.types.js";
 import type { SessionEntry } from "../../config/sessions/types.js";
 import type { OpenClawConfig } from "../../config/types.openclaw.js";
 import type { ExplicitSkillSelection } from "../../skills/types.js";
@@ -52,7 +53,7 @@ export type RunPreparedReplyParams = {
   model: string;
   /** Turn-local account pin from the selected model reference. */
   configuredProfileId?: string;
-  requestedRouteResolution?: RunPreparedReplyParams["modelState"]["requestedRouteResolution"];
+  requestedRouteResolution?: ModelFallbackRouteResolution;
   perMessageQueueMode?: InlineDirectives["queueMode"];
   perMessageQueueOptions?: Pick<InlineDirectives, "debounceMs" | "cap" | "dropPolicy">;
   typing: TypingController;

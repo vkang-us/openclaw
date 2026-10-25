@@ -5,6 +5,7 @@ import type { OpenClawConfig } from "../../config/config.js";
 import type { SessionEntry } from "../../config/sessions.js";
 import { parseInlineSessionDirectives } from "./directive-handling.parse.js";
 import { applyInlineDirectiveOverrides } from "./get-reply-directives-apply.js";
+import { createModelSelectionStateFixture } from "./model-selection.test-support.js";
 import { createMockTypingController } from "./reply.test-helpers.js";
 
 export function createSessionEntry(overrides?: Partial<SessionEntry>): SessionEntry {
@@ -52,9 +53,7 @@ export function createInlineDirectiveParams(params: MixedDirectiveParams) {
     parseInlineSessionDirectives(params.body, { modelAliases: params.modelAliases });
   const allowedModels = params.allowedModels ?? [];
   const modelState: ModelState = {
-    provider,
-    model,
-    requestedRouteResolution: "resolved",
+    ...createModelSelectionStateFixture({ agentCfg: cfg.agents?.defaults, provider, model }),
     modelPolicy: createModelVisibilityPolicy({
       cfg,
       catalog: allowedModels,
@@ -65,10 +64,8 @@ export function createInlineDirectiveParams(params: MixedDirectiveParams) {
     operatorAuthority: params.operatorAuthority,
     allowedModelKeys: new Set(allowedModels.map((entry) => `${entry.provider}/${entry.id}`)),
     allowedModelCatalog: allowedModels,
-    resetModelOverride: false,
     resolveThinkingCatalog: params.resolveThinkingCatalog ?? (async () => allowedModels),
     resolveDefaultThinkingLevel: params.resolveDefaultThinkingLevel ?? (async () => "off"),
-    resolveDefaultReasoningLevel: async () => "off",
   };
   const typing = { ...createMockTypingController(), cleanup: vi.fn() };
 
