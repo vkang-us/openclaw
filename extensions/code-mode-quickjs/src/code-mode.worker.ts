@@ -60,13 +60,6 @@ function notifyWorkerFailure(
   });
 }
 
-type VmRun = {
-  vm: QuickJS;
-  didTimeout: () => boolean;
-  setBudget: (timeoutMs: number) => void;
-  pauseBudget: () => void;
-};
-
 // Workers are reusable; every VM owns its own bridge state, including failures
 // and cancellations, so a later session cannot inherit a previous run's state.
 type BridgeState = {
@@ -253,7 +246,7 @@ function createHostCancelRequestHandler(params: {
   };
 }
 
-async function createVm(input: CodeModeWorkerPayload, bridge: BridgeState): Promise<VmRun> {
+async function createVm(input: CodeModeWorkerPayload, bridge: BridgeState) {
   const startedAt = performance.now();
   let deadlineMs = startedAt + input.config.timeoutMs;
   let timedOut = false;
@@ -350,7 +343,7 @@ async function createVm(input: CodeModeWorkerPayload, bridge: BridgeState): Prom
         timedOut ||= deadlineReached();
         paused = true;
       },
-      setBudget: (timeoutMs) => {
+      setBudget: (timeoutMs: number) => {
         paused = false;
         timedOut = false;
         deadlineMs = performance.now() + timeoutMs;
