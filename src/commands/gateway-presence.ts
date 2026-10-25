@@ -9,17 +9,6 @@ type GatewaySelfPresence = {
   instanceId?: string;
 };
 
-function parseLegacyGatewaySelfText(text: string): Pick<GatewaySelfPresence, "host" | "ip"> {
-  const match = text.match(/^Gateway:\s*([^ (·]+)(?:\s*\(([^)]+)\))?/i);
-  if (!match) {
-    return {};
-  }
-  return {
-    host: readStringValue(match[1]),
-    ip: readStringValue(match[2]),
-  };
-}
-
 export function pickGatewaySelfPresence(presence: unknown): GatewaySelfPresence | null {
   if (!Array.isArray(presence)) {
     return null;
@@ -33,10 +22,13 @@ export function pickGatewaySelfPresence(presence: unknown): GatewaySelfPresence 
   if (!self) {
     return null;
   }
-  const legacy = typeof self.text === "string" ? parseLegacyGatewaySelfText(self.text) : {};
+  const legacyMatch =
+    typeof self.text === "string"
+      ? self.text.match(/^Gateway:\s*([^ (·]+)(?:\s*\(([^)]+)\))?/i)
+      : null;
   const result: GatewaySelfPresence = {
-    host: readStringValue(self.host) ?? legacy.host,
-    ip: readStringValue(self.ip) ?? legacy.ip,
+    host: readStringValue(self.host) ?? readStringValue(legacyMatch?.[1]),
+    ip: readStringValue(self.ip) ?? readStringValue(legacyMatch?.[2]),
     version: readStringValue(self.version),
     platform: readStringValue(self.platform),
   };

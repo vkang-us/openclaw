@@ -32,27 +32,6 @@ function shorten(message: string, maxLen: number): string {
   return `${truncateUtf16Safe(cleaned, Math.max(0, maxLen - 1))}…`;
 }
 
-function consumeJsonBlock(
-  lines: string[],
-  startIndex: number,
-): { json: string; endIndex: number } | null {
-  const startLine = lines[startIndex] ?? "";
-  const braceAt = startLine.indexOf("{");
-  if (braceAt < 0) {
-    return null;
-  }
-
-  const raw = [startLine.slice(braceAt), ...lines.slice(startIndex + 1)].join("\n");
-  const fragment = extractBalancedJsonPrefix(raw);
-  if (!fragment) {
-    // A bounded tail can end mid-object. Consume the rest so orphaned JSON
-    // fields do not escape into the user-facing diagnosis as ordinary lines.
-    return { json: raw, endIndex: lines.length - 1 };
-  }
-  const consumedLineOffset = fragment.json.split("\n").length - 1;
-  return { json: fragment.json, endIndex: startIndex + consumedLineOffset };
-}
-
 export function summarizeLogTail(rawLines: string[], opts?: { maxLines?: number }): string[] {
   const maxLines = Math.max(6, opts?.maxLines ?? 26);
 
@@ -90,10 +69,14 @@ export function summarizeLogTail(rawLines: string[], opts?: { maxLines?: number 
     if (tokenRefresh) {
       const tag = tokenRefresh[1] ?? "unknown";
       const status = tokenRefresh[2] ?? "unknown";
-      const block = consumeJsonBlock(lines, i);
-      if (block) {
-        i = block.endIndex;
-        const parsed = (safeParseJson(block.json) ?? null) as {
+      const braceAt = line.indexOf("{");
+      if (braceAt >= 0) {
+        const raw = [line.slice(braceAt), ...lines.slice(i + 1)].join("\n");
+        const fragment = extractBalancedJsonPrefix(raw);
+        // A bounded tail can end mid-object. Consume the rest so orphaned JSON
+        // fields do not escape into the user-facing diagnosis as ordinary lines.
+        i = fragment ? i + fragment.json.split("\n").length - 1 : lines.length - 1;
+        const parsed = (safeParseJson(fragment?.json ?? raw) ?? null) as {
           error?: { code?: string; message?: string };
         } | null;
         const code = normalizeOptionalString(parsed?.error?.code) ?? null;
