@@ -58,16 +58,7 @@ export type NpmSpecResolution = {
 
 type InstallSourceResult<T> = ({ ok: true } & T) | { ok: false; error: string };
 
-type NpmResolutionFields = {
-  resolvedName?: string;
-  resolvedVersion?: string;
-  resolvedSpec?: string;
-  integrity?: string;
-  shasum?: string;
-  resolvedAt?: string;
-};
-
-export function buildNpmResolutionFields(resolution?: NpmSpecResolution): NpmResolutionFields {
+export function buildNpmResolutionFields(resolution?: NpmSpecResolution) {
   return {
     resolvedName: resolution?.name,
     resolvedVersion: resolution?.version,

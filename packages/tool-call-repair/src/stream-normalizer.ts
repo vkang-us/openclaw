@@ -610,15 +610,7 @@ export async function* normalizePlainTextToolCallStreamEvents(
     });
   };
 
-  const buildCandidateReplayChunks = (
-    state: CandidatePendingState,
-    replayedText: string,
-  ): Array<{
-    contentIndex: number;
-    start: number;
-    template: Record<string, unknown>;
-    text: string;
-  }> => {
+  const buildCandidateReplayChunks = (state: CandidatePendingState, replayedText: string) => {
     // Buffered entries mark where reasoning and text arrived, so replay can split the
     // decided prefix at those boundaries instead of emitting it as one late segment.
     const boundaries = new Set<number>();
