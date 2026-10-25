@@ -4,12 +4,6 @@ import { normalizeModelCostForCatalog } from "./model-cost-normalization.js";
 
 export const PLUGIN_MODEL_CATALOG_GENERATED_BY = "openclaw-plugin-model-catalog-v1";
 
-type PluginModelCatalogRepair = {
-  contents: string;
-  removedModelCount: number;
-  completedCostModelCount: number;
-};
-
 function hasCatalogApi(value: unknown): boolean {
   return typeof value === "string" && value.length > 0;
 }
@@ -20,9 +14,7 @@ export function isGeneratedPluginModelCatalog(value: unknown): value is Record<s
 }
 
 /** Removes unusable transport rows and completes numeric partial costs with the writer's rule. */
-export function repairPluginModelCatalogTransportMetadata(
-  contents: string,
-): PluginModelCatalogRepair {
+export function repairPluginModelCatalogTransportMetadata(contents: string) {
   let parsed: unknown;
   try {
     parsed = JSON.parse(contents) as unknown;

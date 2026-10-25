@@ -169,11 +169,7 @@ export function resolveConfiguredContextTokenLimits(
   normalize: (
     value: number | undefined,
   ) => number | null | undefined = normalizePositiveContextTokens,
-): {
-  effectiveConfiguredTokens?: number;
-  configuredContextWindow?: number;
-  fixedContextWindow?: number;
-} {
+) {
   const provider = params.provider.trim();
   const model = params.model.trim();
   const configuredModel = resolveConfiguredRuntimeModel(
