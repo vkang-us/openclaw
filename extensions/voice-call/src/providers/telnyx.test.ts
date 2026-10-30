@@ -356,10 +356,14 @@ describe("TelnyxProvider noise suppression", () => {
 
   it("waits for suppression_start to settle, bounded inside the stream token lifetime", async () => {
     const response = createDeferred<Response>();
+    const suppressionRequested = createDeferred<void>();
     let settled = false;
     let streamedBeforeSettle = false;
     apiMocks.fetchWithSsrFGuard.mockImplementation(async ({ url }) => {
       streamedBeforeSettle ||= url.endsWith("/streaming_start") && !settled;
+      if (url.endsWith("/suppression_start")) {
+        suppressionRequested.resolve();
+      }
       return {
         response: url.endsWith("/suppression_start") ? await response.promise : ok(),
         finalUrl: url,
@@ -368,7 +372,7 @@ describe("TelnyxProvider noise suppression", () => {
     });
 
     const answered = withSuppression({ direction: "outbound" }).answerCall(STREAMING_ANSWER);
-    await vi.waitFor(() => expect(readRequests()).toHaveLength(2));
+    await suppressionRequested.promise;
     settled = true;
     response.resolve(ok());
     await answered;
